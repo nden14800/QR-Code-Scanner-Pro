@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRコードスキャナー Pro</title>
+    
+    <!-- Fonts: Roboto -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons: Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <!-- Library: HTML5-QRCode -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        /* --- CSS変数 & テーマ設定 --- */
+        :root {
+            /* ライトモード (デフォルト) */
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-sub: #6c757d;
+            --primary: #007bff;
+            --primary-hover: #0056b3;
+            --border-color: #e9ecef;
+            --overlay-color: rgba(0, 0, 0, 0.5);
+            --scan-line: #007bff;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --input-bg: #f8f9fa;
+            --spinner-color: #007bff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* ダークモード (上書き) */
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-main: #ffffff;
+                --text-sub: #a0a0a0;
+                --primary: #3d8bfd;
+                --primary-hover: #1a6fd8;
+                --border-color: #333333;
+                --overlay-color: rgba(0, 0, 0, 0.7);
+                --scan-line: #3d8bfd;
+                --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                --input-bg: #2c2c2c;
+                --spinner-color: #1a73e8;
+            }
+        }
+
+        /* --- グローバルスタイル --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            padding: 20px;
+        }
+
+        /* --- メインコンテナ --- */
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+            transition: background-color 0.3s ease;
+        }
+
+        /* --- ヘッダー --- */
+        header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* --- タブ切り替え --- */
+        .tabs {
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-sub);
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background-color: var(--input-bg);
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background-color: var(--bg-color);
+        }
+
+        /* --- スキャナーエリア --- */
+        .scanner-wrapper {
+            position: relative;
+            width: 100%;
+            min-height: 350px;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #reader {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* カスタムスキャン枠 (オーバーレイ) */
+        .scan-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            pointer-events: none;
+            display: none; /* デフォルト非表示、カメラ起動時に表示 */
+            z-index: 5;
+        }
+        
+        .scan-overlay.active {
+            display: block;
+        }
+
+        .scan-corner {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-color: var(--scan-line);
+            border-style: solid;
+            border-width: 4px;
+        }
+
+        .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 16px; }
+        .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 16px; }
+        .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 16px; }
+        .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 16px; }
+
+        /* スキャン中のレーザーアニメーション */
+        .scan-laser {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: var(--scan-line);
+            top: 0;
+            left: 0;
+            box-shadow: 0 0 4px var(--scan-line);
+            animation: scan 2s infinite linear;
+            opacity: 0.6;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        /* --- ファイルアップロードエリア --- */
+        .file-upload-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 350px;
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 2px dashed var(--border-color);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .file-upload-area.active {
+            display: flex;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--text-sub);
+            margin-bottom: 10px;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 8px;
+            font-weight: 500;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .custom-file-upload:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #qr-input-file {
+            display: none;
+        }
+
+        /* --- ローディングオーバーレイ (提供されたコードベース) --- */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--card-bg);
+            display: none; /* デフォルト非表示 */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        /* 提供されたSVGローディングスピナーのスタイル */
+        .loader {
+            width: 80px;
+            height: 80px;
+            animation: rotate 1s linear infinite;
+            transform-origin: center center;
+        }
+
+        .loader .path {
+            stroke: var(--spinner-color);
+            stroke-linecap: round;
+            stroke-dasharray: 89 150;
+            stroke-dashoffset: 0;
+            stroke-width: 2.5; /* 修正指示通り */
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 15px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
+
+        /* --- 結果表示モーダル --- */
+        .result-container {
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            z-index: 30;
+        }
+
+        .result-container.show {
+            transform: translateY(0);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .result-title {
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-sub);
+            cursor: pointer;
+        }
+
+        .scanned-text {
+            background-color: var(--input-bg);
+            padding: 15px;
+            border-radius: 12px;
+            word-break: break-all;
+            color: var(--text-main);
+            font-family: monospace;
+            margin-bottom: 20px;
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        /* HTML5-QRCodeのデフォルトUIの一部を隠す */
+        #reader__dashboard_section_csr button { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1><i class="bi bi-qr-code-scan"></i> QRコードリーダー</h1>
+        </header>
+
+        <!-- モード切替タブ -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-camera" onclick="switchMode('camera')">
+                <i class="bi bi-camera"></i> カメラ
+            </button>
+            <button class="tab-btn" id="tab-file" onclick="switchMode('file')">
+                <i class="bi bi-image"></i> 画像ファイル
+            </button>
+        </div>
+
+        <!-- スキャナー表示領域 -->
+        <div class="scanner-wrapper">
+            <!-- カメラ映像 -->
+            <div id="reader"></div>
+            
+            <!-- カスタムスキャン枠 -->
+            <div class="scan-overlay" id="scan-overlay">
+                <div class="scan-corner top-left"></div>
+                <div class="scan-corner top-right"></div>
+                <div class="scan-corner bottom-left"></div>
+                <div class="scan-corner bottom-right"></div>
+                <div class="scan-laser"></div>
+            </div>
+
+            <!-- ファイルアップロード画面 -->
+            <div class="file-upload-area" id="file-upload-area">
+                <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                <p style="color: var(--text-sub);">QRコードを含む画像を選択してください</p>
+                <label for="qr-input-file" class="custom-file-upload">
+                    ファイルを選択
+                </label>
+                <input type="file" id="qr-input-file" accept="image/*">
+            </div>
+
+            <!-- ローディングスピナー (画像解析中に表示) -->
+            <div class="loading-overlay" id="loading-overlay">
+                <svg id="spinner" class="loader" viewBox="0 0 50 50">
+                    <circle class="path" cx="25" cy="25" r="20" fill="none"></circle>
+                </svg>
+                <div class="loading-text">解析中...</div>
+            </div>
+        </div>
+
+        <!-- 結果表示ポップアップ -->
+        <div class="result-container" id="result-container">
+            <div class="result-header">
+                <span class="result-title">スキャン結果</span>
+                <button class="close-btn" onclick="resetScanner()"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="scanned-text" id="result-text">
+                <!-- 結果はここに挿入されます -->
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="copyToClipboard()">
+                    <i class="bi bi-clipboard"></i> コピー
+                </button>
+                <button class="btn btn-primary" id="open-link-btn" onclick="openLink()">
+                    <i class="bi bi-box-arrow-up-right"></i> 開く
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 変数定義 ---
+        const html5QrCode = new Html5Qrcode("reader");
+        const fileInput = document.getElementById('qr-input-file');
+        const resultContainer = document.getElementById('result-container');
+        const resultText = document.getElementById('result-text');
+        const scanOverlay = document.getElementById('scan-overlay');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const openLinkBtn = document.getElementById('open-link-btn');
+        let currentMode = 'camera';
+        let isScanning = false;
+
+        // --- 関数定義 ---
+
+        // カメラ/ファイルモードの切り替え
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // UI更新
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${mode}`).classList.add('active');
+
+            const readerDiv = document.getElementById('reader');
+            const fileArea = document.getElementById('file-upload-area');
+
+            if (mode === 'camera') {
+                fileArea.classList.remove('active');
+                readerDiv.style.display = 'block';
+                startCamera();
+            } else {
+                stopCamera().then(() => {
+                    readerDiv.style.display = 'none';
+                    scanOverlay.classList.remove('active');
+                    fileArea.classList.add('active');
+                });
+            }
+            
+            // 切り替え時に結果画面が開いていれば閉じる
+            resultContainer.classList.remove('show');
+            loadingOverlay.classList.remove('active');
+        }
+
+        // カメラ起動
+        function startCamera() {
+            if (isScanning) return;
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            // 背面カメラ(environment)を優先して起動
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+            .then(() => {
+                isScanning = true;
+                scanOverlay.classList.add('active');
+            })
+            .catch(err => {
+                console.error("カメラ起動エラー", err);
+                alert("カメラへのアクセスが拒否されたか、エラーが発生しました。\nHTTPS環境かローカルホストで実行してください。");
+            });
+        }
+
+        // カメラ停止
+        function stopCamera() {
+            if (isScanning) {
+                return html5QrCode.stop().then(() => {
+                    isScanning = false;
+                    scanOverlay.classList.remove('active');
+                    // ビデオ要素を視覚的にクリア
+                    const video = document.querySelector('#reader video');
+                    if(video) video.remove();
+                }).catch(err => {
+                    console.error("停止エラー", err);
+                });
+            }
+            return Promise.resolve();
+        }
+
+        // ファイルアップロード処理の修正版
+        fileInput.addEventListener('change', e => {
+            if (e.target.files.length === 0) return;
+
+            const imageFile = e.target.files[0];
+            
+            // 1. まずローディングスピナーを表示
+            loadingOverlay.classList.add('active');
+
+            // 2. ブラウザが描画を更新するための短い遅延
+            setTimeout(() => {
+                // 3. ファイルのスキャンを実行
+                html5QrCode.scanFile(imageFile, true)
+                    .then(decodedText => {
+                        // 成功時
+                        loadingOverlay.classList.remove('active');
+                        onScanSuccess(decodedText);
+                    })
+                    .catch(err => {
+                        // 失敗時
+                        loadingOverlay.classList.remove('active');
+                        alert("この画像からQRコードを読み取れませんでした。別の画像を試すか、画像の向きを変えてみてください。");
+                        console.error("スキャンエラー:", err);
+                        // ファイル入力をクリアして、同じファイルを再度選択できるようにする
+                        fileInput.value = '';
+                    });
+            }, 100); // 100ms待機
+        });
+
+        // スキャン成功時のコールバック
+        function onScanSuccess(decodedText, decodedResult) {
+            // カメラモードの場合はスキャンを停止
+            if (currentMode === 'camera') {
+                stopCamera();
+            }
+
+            // 結果を表示
+            resultText.innerText = decodedText;
+            resultContainer.classList.add('show');
+
+            // URLかどうか判定して「開く」ボタンを制御
+            if (isValidURL(decodedText)) {
+                openLinkBtn.disabled = false;
+                openLinkBtn.style.opacity = '1';
+            } else {
+                openLinkBtn.disabled = true;
+                openLinkBtn.style.opacity = '0.5';
+            }
+        }
+
+        function onScanFailure(error) {
+            // コンソールスパム防止のため何もしない
+        }
+
+        // スキャナーのリセット（モーダルを閉じる）
+        function resetScanner() {
+            resultContainer.classList.remove('show');
+            fileInput.value = ''; // ファイル入力をリセット
+            if (currentMode === 'camera') {
+                startCamera();
+            }
+        }
+
+        // クリップボードにコピー
+        function copyToClipboard() {
+            const text = resultText.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = document.querySelector('.btn-secondary').innerHTML;
+                const btn = document.querySelector('.btn-secondary');
+                btn.innerHTML = '<i class="bi bi-check"></i> コピー完了!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('コピー失敗', err);
+            });
+        }
+
+        // リンクを開く
+        function openLink() {
+            const text = resultText.innerText;
+            if (isValidURL(text)) {
+                window.open(text, '_blank');
+            }
+        }
+
+        // URL判定ヘルパー関数
+        function isValidURL(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // 初期化実行
+        window.onload = () => {
+            switchMode('camera');
+        };
+
+    </script>
+</body>
+</html>
