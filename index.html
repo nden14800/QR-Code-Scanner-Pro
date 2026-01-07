@@ -16,14 +16,14 @@
     <!-- Library: HTML5-QRCode -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
-    <!-- Tailwind CSS (Utility) -->
+    <!-- Tailwind CSS (Utility for layout) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-        /* --- テーマ設定 --- */
+        /* --- CSS変数 & テーマ設定 --- */
         :root {
             /* ライトモード */
-            --bg-body: #f0f2f5;
+            --bg-body: #f8f9fa;
             --bg-panel: #ffffff;
             --text-main: #212529;
             --text-sub: #6c757d;
@@ -31,9 +31,7 @@
             --primary-hover: #0056b3;
             --border-color: #dee2e6;
             --scan-line: #007bff;
-            --input-bg: #f8f9fa;
-            --shadow: 0 4px 12px rgba(0,0,0,0.05);
-            --sheet-overlay: rgba(0,0,0,0.4);
+            --input-bg: #f1f3f5;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -48,22 +46,20 @@
                 --border-color: #343a40;
                 --scan-line: #3d8bfd;
                 --input-bg: #2b3035;
-                --shadow: 0 4px 20px rgba(0,0,0,0.4);
-                --sheet-overlay: rgba(0,0,0,0.7);
             }
         }
 
-        /* --- 基本スタイル --- */
+        /* --- グローバルスタイル --- */
         body {
             font-family: 'Roboto', sans-serif;
             background-color: var(--bg-body);
             color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s;
             margin: 0;
             min-height: 100vh;
-            overflow-x: hidden; /* 横スクロール防止 */
         }
 
-        /* --- レイアウト --- */
+        /* --- レイアウトコンテナ --- */
         .main-layout {
             display: flex;
             flex-direction: column;
@@ -72,85 +68,76 @@
             max-width: 1200px;
             margin: 0 auto;
             height: 100vh;
-            box-sizing: border-box;
         }
 
+        /* PC画面では左右分割 */
         @media (min-width: 768px) {
             .main-layout {
                 flex-direction: row;
                 align-items: flex-start;
                 padding: 40px;
-                overflow: hidden;
             }
+            
             .scanner-section {
                 flex: 1;
                 width: 100%;
-                height: calc(100vh - 80px);
             }
+
             .result-section {
                 width: 400px;
-                height: auto;
-                max-height: calc(100vh - 80px);
+                position: sticky;
+                top: 40px;
             }
         }
 
-        /* --- パネル --- */
+        /* --- パネル共通スタイル --- */
         .panel {
             background-color: var(--bg-panel);
             border: 1px solid var(--border-color);
-            border-radius: 20px;
+            border-radius: 16px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: var(--shadow);
-            position: relative;
         }
 
-        /* ヘッダー */
+        /* --- ヘッダー & タブ --- */
         .header-bar {
-            padding: 16px 20px;
+            padding: 15px 20px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background-color: var(--bg-panel);
-            flex-shrink: 0;
         }
 
         .app-title {
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        /* タブ */
         .tabs {
             display: flex;
-            padding: 8px 16px;
-            gap: 8px;
+            padding: 10px 20px;
+            gap: 10px;
             border-bottom: 1px solid var(--border-color);
-            background-color: var(--bg-panel);
-            flex-shrink: 0;
         }
 
         .tab-btn {
-            flex: 1;
-            padding: 10px;
+            padding: 10px 20px;
             border: none;
             background: transparent;
             color: var(--text-sub);
             font-family: inherit;
             font-weight: 500;
             cursor: pointer;
-            border-radius: 10px;
+            border-radius: 8px;
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
         }
 
         .tab-btn.active {
@@ -159,11 +146,15 @@
             font-weight: 700;
         }
 
-        /* --- スキャナー画面 --- */
+        .tab-btn:hover:not(.active) {
+            background-color: var(--bg-body);
+        }
+
+        /* --- スキャナーエリア --- */
         .scanner-viewport {
             position: relative;
             background-color: #000;
-            flex-grow: 1;
+            width: 100%;
             min-height: 400px; 
             display: flex;
             justify-content: center;
@@ -174,18 +165,32 @@
         #reader {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            position: relative;
         }
-        /* 不要な要素を非表示 */
-        #reader > div { display: none !important; }
-        #reader video { display: block !important; object-fit: cover !important; }
 
-        /* スキャン枠（独自） */
+        /* ▼▼▼ 二重表示の修正箇所 ▼▼▼ */
+        /* ライブラリが自動生成する網掛けオーバーレイを強制非表示 */
+        #qr-shaded-region {
+            display: none !important;
+        }
+
+        /* カメラ映像をコンテナいっぱいに広げる設定 */
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: 0 !important;
+        }
+        /* ▲▲▲ 修正ここまで ▲▲▲ */
+
+        /* カスタムスキャンオーバーレイ枠 */
         .scan-overlay {
             position: absolute;
-            top: 50%; left: 50%;
+            top: 50%;
+            left: 50%;
             transform: translate(-50%, -50%);
-            width: 250px; height: 250px;
+            width: 250px;
+            height: 250px;
             pointer-events: none;
             display: none;
             z-index: 10;
@@ -193,54 +198,51 @@
         .scan-overlay.active { display: block; }
 
         .scan-corner {
-            position: absolute; width: 40px; height: 40px;
+            position: absolute;
+            width: 40px;
+            height: 40px;
             border-color: var(--scan-line);
-            border-style: solid; border-width: 4px;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5);
-            border-radius: 4px; 
+            border-style: solid;
+            border-width: 4px;
         }
-        .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 20px; }
-        .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 20px; }
-        .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 20px; }
-        .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 20px; }
+        .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 16px; }
+        .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 16px; }
+        .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 16px; }
+        .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 16px; }
 
         .scan-laser {
-            position: absolute; width: 100%; height: 2px;
+            position: absolute;
+            width: 100%;
+            height: 2px;
             background: var(--scan-line);
-            top: 0; box-shadow: 0 0 10px var(--scan-line);
+            top: 0;
+            box-shadow: 0 0 4px var(--scan-line);
             animation: scan 2s infinite linear;
-            opacity: 0.8;
+            opacity: 0.6;
         }
         @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
 
-        /* --- アップロード画面 & 説明文 --- */
+        /* --- ファイルアップロードエリア --- */
         .file-upload-area {
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             width: 100%;
-            height: 100%;
+            height: 400px;
             background-color: var(--input-bg);
+            border: 3px dashed var(--border-color);
             position: relative;
-            padding: 20px;
-            overflow-y: auto;
         }
         .file-upload-area.active { display: flex; }
 
         .upload-content {
             text-align: center;
-            max-width: 400px;
-            width: 100%;
-            background: var(--bg-panel);
-            padding: 30px;
-            border-radius: 16px;
-            border: 2px dashed var(--border-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px;
         }
 
         .upload-icon {
-            font-size: 3.5rem;
+            font-size: 4rem;
             color: var(--text-sub);
             margin-bottom: 15px;
             display: block;
@@ -248,204 +250,153 @@
 
         .custom-file-upload {
             display: inline-block;
-            padding: 12px 30px;
+            padding: 12px 24px;
             cursor: pointer;
             background-color: var(--primary);
             color: white;
-            border-radius: 50px;
-            font-weight: 600;
-            margin: 15px 0;
-            transition: transform 0.2s, background 0.2s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            font-weight: 500;
+            margin-top: 15px;
+            transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .custom-file-upload:hover { 
-            background-color: var(--primary-hover);
-            transform: translateY(-2px);
-        }
+        .custom-file-upload:hover { background-color: var(--primary-hover); }
 
         #qr-input-file { display: none; }
 
-        /* 復活させた説明文 */
-        .upload-hint {
-            margin-top: 20px;
-            font-size: 0.85rem;
-            color: var(--text-sub);
-            text-align: left;
-            background-color: var(--input-bg);
-            padding: 15px;
-            border-radius: 10px;
-            line-height: 1.6;
-        }
-        .upload-hint strong {
-            color: var(--text-main);
-        }
-
-        /* --- ローディングスピナー --- */
+        /* --- 指定されたローディングスピナー --- */
         .loader-overlay {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-color: rgba(255, 255, 255, 0.9);
-            display: none;
+            display: none; /* デフォルト非表示 */
             flex-direction: column;
-            justify-content: center; align-items: center;
+            justify-content: center;
+            align-items: center;
             z-index: 50;
         }
+        
         @media (prefers-color-scheme: dark) {
-            .loader-overlay { background-color: rgba(30, 30, 30, 0.9); }
+            .loader-overlay {
+                background-color: rgba(30, 30, 30, 0.9);
+            }
         }
+
         .loader-overlay.active { display: flex; }
 
+        /* ユーザー提供のSVGスタイル */
         .loader {
-            width: 60px; height: 60px;
+            width: 80px;
+            height: 80px;
             animation: rotate 1s linear infinite;
+            transform-origin: center center;
         }
+
         .loader .path {
-            stroke: #007bff; stroke-linecap: round;
-            stroke-dasharray: 89 150; stroke-dashoffset: 0;
-            stroke-width: 1.5;
+            stroke: #007bff; /* ライトモード */
+            stroke-linecap: round;
+            stroke-dasharray: 89 150;
+            stroke-dashoffset: 0;
+            stroke-width: 1.5; /* 指定通り細く */
         }
-        @media (prefers-color-scheme: dark) { .loader .path { stroke: #1a73e8; } }
-        @keyframes rotate { 100% { transform: rotate(360deg); } }
 
-        .loading-msg { margin-top: 15px; font-weight: 500; color: var(--text-sub); }
-
-        /* --- 結果パネル (スマホ向けボトムシート & アニメーション) --- */
-        
-        /* バックドロップ（暗い背景） */
-        .sheet-backdrop {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--sheet-overlay);
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.3s ease;
-            z-index: 90;
+        @media (prefers-color-scheme: dark) {
+            .loader .path {
+                stroke: #1a73e8; /* ダークモード */
+            }
         }
-        .sheet-backdrop.active { opacity: 1; pointer-events: auto; }
 
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-msg {
+            margin-top: 20px;
+            font-weight: 500;
+            color: var(--text-sub);
+        }
+
+        /* --- 右側の結果パネル --- */
         .result-panel-content {
-            padding: 20px;
-            display: flex; flex-direction: column; gap: 15px;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
             height: 100%;
-            overflow-y: auto;
+            justify-content: flex-start;
         }
 
-        /* スマホ: 下から出てくるボトムシートスタイル */
-        @media (max-width: 767px) {
-            .result-section {
-                position: fixed;
-                bottom: 0; left: 0;
-                width: 100%;
-                z-index: 100;
-                border-radius: 24px 24px 0 0;
-                box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-                
-                /* 初期状態: 下に隠す */
-                transform: translateY(100%);
-                opacity: 0;
-                transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-                
-                max-height: 85vh;
-                padding-bottom: 20px; /* iPhoneの下部バー対応 */
-            }
-
-            .result-section.active {
-                transform: translateY(0);
-                opacity: 1;
-            }
-
-            /* シートハンドル */
-            .result-section::before {
-                content: ''; display: block;
-                width: 40px; height: 5px;
-                background-color: var(--border-color);
-                border-radius: 10px;
-                margin: 12px auto 0;
-            }
-        }
-
-        /* PC: 通常の右カラム、ただしアニメーションはつける */
-        @media (min-width: 768px) {
-            .sheet-backdrop { display: none; } /* PCでは暗くしない */
-            
-            .result-section {
-                position: relative;
-                transform: none; opacity: 1;
-                background: var(--bg-panel);
-            }
-            
-            /* 結果が出たときのみ中身をフェードイン */
-            .result-content {
-                opacity: 0;
-                transform: translateY(10px);
-                transition: all 0.4s ease-out;
-            }
-            .result-content.show {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* 結果内容のスタイル */
         .empty-state {
-            text-align: center; color: var(--text-sub);
+            text-align: center;
+            color: var(--text-sub);
             margin-top: 50px;
-            display: flex; flex-direction: column; align-items: center;
+            display: block;
         }
-        .empty-state i { font-size: 3rem; margin-bottom: 10px; opacity: 0.3; }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            display: block;
+            opacity: 0.5;
+        }
 
-        .result-content { display: none; flex-direction: column; gap: 15px; }
+        .result-content {
+            display: none; /* 結果が出るまで非表示 */
+            flex-direction: column;
+            gap: 15px;
+            animation: fadeIn 0.3s ease;
+        }
         .result-content.show { display: flex; }
 
-        .scanned-label { font-size: 0.8rem; color: var(--text-sub); font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .scanned-value-box {
             background-color: var(--input-bg);
             border: 1px solid var(--border-color);
-            padding: 16px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 8px;
             font-family: monospace;
             word-break: break-all;
             max-height: 200px;
             overflow-y: auto;
             color: var(--text-main);
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
-        .action-btn-group { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .action-btn-group {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
 
         .btn {
-            padding: 14px;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 8px;
             border: none;
             font-weight: 600;
             cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             font-size: 1rem;
-            transition: all 0.2s;
+            transition: opacity 0.2s;
             width: 100%;
         }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn:active { transform: scale(0.98); }
+        .btn:hover:not(:disabled) { opacity: 0.9; }
 
-        .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .btn-primary { background-color: var(--primary); color: white; }
         .btn-secondary { background-color: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); }
-        .btn-secondary:hover { background-color: var(--border-color); }
 
-        /* スマホ用の閉じるボタン */
-        .close-sheet-btn {
-            position: absolute; top: 15px; right: 15px;
-            background: transparent; border: none;
-            font-size: 1.5rem; color: var(--text-sub);
-            cursor: pointer; z-index: 10;
-        }
-        @media (min-width: 768px) { .close-sheet-btn { display: none; } }
-
+        /* HTML5-QRCodeの不要な要素を隠す */
+        #reader__dashboard_section_csr button { display: none; }
+        #reader__dashboard_section_swaplink { display: none; }
     </style>
 </head>
 <body>
-
-    <!-- 背景バックドロップ (スマホ用) -->
-    <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeResultSheet()"></div>
 
     <div class="main-layout">
         
@@ -480,45 +431,35 @@
                     <div class="scan-laser"></div>
                 </div>
 
-                <!-- ファイルアップロードUI (説明文復活版) -->
+                <!-- ファイルアップロードUI -->
                 <div class="file-upload-area" id="file-upload-area">
                     <div class="upload-content">
                         <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                        <h3 style="font-size: 1.2rem; margin-bottom: 5px; font-weight: 700;">画像をアップロード</h3>
-                        
+                        <h3 style="font-size: 1.1rem; margin-bottom: 5px;">画像をドラッグ&ドロップ</h3>
+                        <p style="color: var(--text-sub); font-size: 0.9rem;">または</p>
                         <label for="qr-input-file" class="custom-file-upload">
                             ファイルを選択
                         </label>
                         <input type="file" id="qr-input-file" accept="image/*">
-
-                        <!-- 復活した説明文エリア -->
-                        <div class="upload-hint">
-                            <p style="margin-bottom: 8px;"><i class="bi bi-info-circle-fill"></i> <strong>スクリーンショット対応</strong></p>
-                            <p style="font-size: 0.8rem;">
-                                画像内のQRコードが小さすぎると読み取れない場合があります。<br>
-                                読み取れない時は、<strong>画像をトリミング（切り抜き）</strong>して、QRコード部分を大きくしてから再度お試しください。
-                            </p>
-                        </div>
+                        <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-sub);">
+                            ※ スクリーンショットも読み取れます
+                        </p>
                     </div>
                 </div>
 
-                <!-- ローディングスピナー -->
+                <!-- 指定のローディングスピナー -->
                 <div class="loader-overlay" id="loading-overlay">
                     <svg id="spinner" class="loader" viewBox="0 0 50 50">
                         <circle class="path" cx="25" cy="25" r="20" fill="none"></circle>
                     </svg>
-                    <div class="loading-msg">解析中...</div>
+                    <div class="loading-msg">QRコードを解析中...</div>
                 </div>
             </div>
         </section>
 
-        <!-- 右側（スマホでは下から出てくる）：結果表示セクション -->
-        <section class="result-section panel" id="result-section">
-            <button class="close-sheet-btn" onclick="closeResultSheet()">
-                <i class="bi bi-x-lg"></i>
-            </button>
-
-            <div class="header-bar" style="border-bottom: none; padding-bottom: 0;">
+        <!-- 右側：結果表示セクション -->
+        <section class="result-section panel">
+            <div class="header-bar">
                 <div class="app-title" style="font-size: 1rem;">
                     <i class="bi bi-card-text"></i> スキャン結果
                 </div>
@@ -534,7 +475,7 @@
                 <!-- 結果表示 -->
                 <div id="result-content" class="result-content">
                     <div>
-                        <span class="scanned-label">読み取り内容</span>
+                        <span style="font-size: 0.85rem; color: var(--text-sub); font-weight: 500;">読み取り内容</span>
                         <div class="scanned-value-box" id="result-text"></div>
                     </div>
                     
@@ -545,9 +486,11 @@
                         <button class="btn btn-secondary" onclick="copyToClipboard()">
                             <i class="bi bi-clipboard"></i> コピー
                         </button>
-                        <button class="btn btn-secondary" onclick="resetScanner()">
-                            <i class="bi bi-arrow-clockwise"></i> 次をスキャン
-                        </button>
+                    </div>
+
+                    <!-- エラー時のヒント（JSで表示制御） -->
+                    <div id="error-hint" style="display:none; margin-top:10px; padding:10px; background:#fff3cd; color:#856404; border-radius:8px; font-size:0.85rem;">
+                        <i class="bi bi-exclamation-triangle"></i> 読み取れませんか？ 画像をトリミング（QRコード部分だけを切り抜き）してから再度試してください。
                     </div>
                 </div>
             </div>
@@ -559,14 +502,13 @@
         // --- 変数定義 ---
         const html5QrCode = new Html5Qrcode("reader");
         const fileInput = document.getElementById('qr-input-file');
-        const resultSection = document.getElementById('result-section');
-        const backdrop = document.getElementById('sheet-backdrop');
         const emptyState = document.getElementById('empty-state');
         const resultContent = document.getElementById('result-content');
         const resultText = document.getElementById('result-text');
         const scanOverlay = document.getElementById('scan-overlay');
         const loadingOverlay = document.getElementById('loading-overlay');
         const openLinkBtn = document.getElementById('open-link-btn');
+        const errorHint = document.getElementById('error-hint');
         
         let currentMode = 'camera';
         let isScanning = false;
@@ -575,7 +517,7 @@
         function switchMode(mode) {
             currentMode = mode;
             
-            // タブのUI更新
+            // タブの見た目更新
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tab-${mode}`).classList.add('active');
 
@@ -598,7 +540,9 @@
         // --- カメラ機能 ---
         function startCamera() {
             if (isScanning) return;
+            errorHint.style.display = 'none';
 
+            // 設定: QRコードの検出範囲などを最適化
             const config = { 
                 fps: 10, 
                 qrbox: { width: 250, height: 250 },
@@ -612,7 +556,7 @@
             })
             .catch(err => {
                 console.error("Camera Error", err);
-                alert("カメラを起動できませんでした。");
+                alert("カメラを起動できませんでした。HTTPS接続か確認してください。");
             });
         }
 
@@ -629,10 +573,13 @@
         }
 
         // --- 画像ファイル処理 ---
+        // ドラッグ&ドロップ対応
         const dropArea = document.getElementById('file-upload-area');
-        dropArea.addEventListener('dragover', (e) => { e.preventDefault(); });
+        dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.backgroundColor = 'var(--bg-body)'; });
+        dropArea.addEventListener('dragleave', (e) => { e.preventDefault(); dropArea.style.backgroundColor = 'var(--input-bg)'; });
         dropArea.addEventListener('drop', (e) => {
             e.preventDefault();
+            dropArea.style.backgroundColor = 'var(--input-bg)';
             if (e.dataTransfer.files.length > 0) {
                 fileInput.files = e.dataTransfer.files;
                 handleFile(e.dataTransfer.files[0]);
@@ -645,9 +592,10 @@
         });
 
         function handleFile(file) {
-            loadingOverlay.classList.add('active');
-            
-            // レンダリング更新のため遅延
+            loadingOverlay.classList.add('active'); // スピナー表示
+            errorHint.style.display = 'none';
+
+            // UI描画更新のために少し待機
             setTimeout(() => {
                 html5QrCode.scanFile(file, true)
                     .then(decodedText => {
@@ -656,20 +604,25 @@
                     })
                     .catch(err => {
                         loadingOverlay.classList.remove('active');
-                        console.error("Scan Error", err);
-                        alert("読み取れませんでした。QRコード部分をトリミングして再度お試しください。");
+                        console.error("File Scan Error", err);
+                        
+                        // 画像が読み取れなかった場合の処理
+                        alert("QRコードを検出できませんでした。\n画像の解像度が低すぎるか、QRコードが小さすぎる可能性があります。画像をトリミングしてから再度お試しください。");
+                        errorHint.style.display = 'block';
+                        
+                        // 入力をクリアして再選択可能にする
                         fileInput.value = '';
                     });
             }, 100); 
         }
 
-        // --- スキャン成功時 ---
+        // --- 共通成功コールバック ---
         function onScanSuccess(decodedText, decodedResult) {
             if (currentMode === 'camera') {
                 stopCamera();
             }
 
-            // 表示更新
+            // 右側のパネルに結果を表示
             emptyState.style.display = 'none';
             resultContent.classList.add('show');
             resultText.innerText = decodedText;
@@ -682,25 +635,23 @@
                 openLinkBtn.disabled = true;
                 openLinkBtn.innerHTML = '<i class="bi bi-text-left"></i> URLではありません';
             }
-
-            // アニメーション発火 (スマホ: ボトムシート表示, PC: フェードイン)
-            resultSection.classList.add('active');
-            backdrop.classList.add('active');
         }
 
         function onScanFailure(error) {
-            // console.log(error);
+            // コンソールログを汚さないため何もしない
         }
 
-        // --- アクション ---
+        // --- ユーティリティ ---
         function copyToClipboard() {
             const text = resultText.innerText;
             if(!text) return;
             navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.btn-secondary'); 
+                const btn = document.querySelector('.btn-secondary');
                 const originalHtml = btn.innerHTML;
                 btn.innerHTML = '<i class="bi bi-check-lg"></i> コピーしました';
-                setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                }, 2000);
             });
         }
 
@@ -711,27 +662,13 @@
             }
         }
 
-        function closeResultSheet() {
-            resultSection.classList.remove('active');
-            backdrop.classList.remove('active');
-        }
-
-        function resetScanner() {
-            closeResultSheet();
-            fileInput.value = '';
-            
-            // 少し待ってから中身をリセット
-            setTimeout(() => {
-                resultContent.classList.remove('show');
-                emptyState.style.display = 'flex';
-                if (currentMode === 'camera') {
-                    startCamera();
-                }
-            }, 300);
-        }
-
         function isValidURL(string) {
-            try { new URL(string); return true; } catch (_) { return false; }
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
         }
 
         // 初期化
