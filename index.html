@@ -32,7 +32,8 @@
             --border-color: #dee2e6;
             --scan-line: #007bff;
             --input-bg: #f1f3f5;
-            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --overlay-backdrop: rgba(0, 0, 0, 0.4);
+            --shadow-sheet: 0 -4px 24px rgba(0,0,0,0.15);
         }
 
         @media (prefers-color-scheme: dark) {
@@ -47,7 +48,8 @@
                 --border-color: #343a40;
                 --scan-line: #3d8bfd;
                 --input-bg: #2b3035;
-                --shadow: 0 4px 20px rgba(0,0,0,0.3);
+                --overlay-backdrop: rgba(0, 0, 0, 0.7);
+                --shadow-sheet: 0 -4px 24px rgba(0,0,0,0.4);
             }
         }
 
@@ -56,10 +58,10 @@
             font-family: 'Roboto', sans-serif;
             background-color: var(--bg-body);
             color: var(--text-main);
-            transition: background-color 0.3s, color 0.3s;
             margin: 0;
             min-height: 100vh;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* --- レイアウトコンテナ --- */
@@ -70,30 +72,30 @@
             padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
-            /* スマホで結果パネルが下から出るスペースを確保 */
-            padding-bottom: 100px; 
+            height: 100vh;
         }
 
-        /* PC画面では左右分割 */
+        /* PC画面レイアウト */
         @media (min-width: 768px) {
             .main-layout {
                 flex-direction: row;
                 align-items: flex-start;
                 padding: 40px;
                 height: 100vh;
-                overflow: hidden; /* PCではスクロールさせない */
+                overflow: hidden;
             }
             
             .scanner-section {
                 flex: 1;
                 width: 100%;
-                height: calc(100vh - 80px); /* 画面いっぱいに */
+                height: calc(100vh - 80px);
             }
 
-            .result-section {
+            .result-wrapper-pc {
                 width: 400px;
                 height: auto;
                 max-height: calc(100vh - 80px);
+                position: relative;
             }
         }
 
@@ -105,12 +107,12 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         /* --- ヘッダー & タブ --- */
         .header-bar {
-            padding: 15px 20px;
+            padding: 16px 20px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
@@ -120,7 +122,7 @@
 
         .app-title {
             font-weight: 700;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -128,7 +130,7 @@
 
         .tabs {
             display: flex;
-            padding: 10px 20px;
+            padding: 10px 16px;
             gap: 10px;
             border-bottom: 1px solid var(--border-color);
             background-color: var(--bg-panel);
@@ -136,7 +138,8 @@
         }
 
         .tab-btn {
-            padding: 10px 20px;
+            flex: 1;
+            padding: 10px;
             border: none;
             background: transparent;
             color: var(--text-sub);
@@ -147,8 +150,9 @@
             transition: all 0.2s;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         .tab-btn.active {
@@ -157,16 +161,12 @@
             font-weight: 700;
         }
 
-        .tab-btn:hover:not(.active) {
-            background-color: var(--bg-body);
-        }
-
         /* --- スキャナーエリア --- */
         .scanner-viewport {
             position: relative;
             background-color: #000;
             width: 100%;
-            flex-grow: 1; /* 残りの高さを埋める */
+            flex-grow: 1;
             min-height: 400px; 
             display: flex;
             justify-content: center;
@@ -181,24 +181,20 @@
             object-fit: cover;
         }
 
-        /* ★修正: ライブラリが生成する余計なオーバーレイを消す */
-        #reader > div {
-            display: none !important;
-        }
-        /* videoタグだけは表示する */
+        /* ライブラリの不要なUIを消去 */
+        #reader > div:first-child { display: none !important; }
+        #reader__dashboard_section_csr button { display: none !important; }
+        
         #reader video {
-            display: block !important;
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
+            border-radius: 0 0 16px 16px;
         }
 
-        /* スキャンオーバーレイ枠（独自実装） */
+        /* スキャン枠 (カスタム) */
         .scan-overlay {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             width: 250px;
             height: 250px;
             pointer-events: none;
@@ -213,8 +209,9 @@
             height: 40px;
             border-color: var(--scan-line);
             border-style: solid;
-            border-width: 4px;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5); /* 視認性向上のための影 */
+            border-width: 5px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            border-radius: 2px;
         }
         .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 16px; }
         .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 16px; }
@@ -227,230 +224,196 @@
             height: 2px;
             background: var(--scan-line);
             top: 0;
-            box-shadow: 0 0 10px var(--scan-line);
-            animation: scan 2s infinite linear;
+            box-shadow: 0 0 15px var(--scan-line);
+            animation: scan 2s infinite ease-in-out;
             opacity: 0.8;
         }
-        @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+        @keyframes scan { 0% { top: 0; opacity: 0; } 50% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
 
-        /* --- ファイルアップロードエリア --- */
+        /* --- ファイルアップロード --- */
         .file-upload-area {
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             width: 100%;
-            height: 100%; /* 親要素いっぱいに */
+            height: 100%;
             background-color: var(--input-bg);
             border: 3px dashed var(--border-color);
-            position: relative;
         }
         .file-upload-area.active { display: flex; }
 
-        .upload-content {
-            text-align: center;
-            padding: 20px;
-        }
-
-        .upload-icon {
-            font-size: 4rem;
-            color: var(--text-sub);
-            margin-bottom: 15px;
-            display: block;
-        }
-
         .custom-file-upload {
-            display: inline-block;
             padding: 12px 24px;
             cursor: pointer;
             background-color: var(--primary);
             color: white;
-            border-radius: 8px;
+            border-radius: 50px;
             font-weight: 500;
             margin-top: 15px;
             transition: background 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-        .custom-file-upload:hover { background-color: var(--primary-hover); }
-
         #qr-input-file { display: none; }
 
-        /* --- 指定されたローディングスピナー --- */
+        /* --- ローディングスピナー --- */
         .loader-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background-color: rgba(255, 255, 255, 0.9);
-            display: none; /* デフォルト非表示 */
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 50;
         }
-        
         @media (prefers-color-scheme: dark) {
-            .loader-overlay {
-                background-color: rgba(30, 30, 30, 0.9);
-            }
+            .loader-overlay { background-color: rgba(30, 30, 30, 0.9); }
         }
-
         .loader-overlay.active { display: flex; }
 
         .loader {
             width: 80px;
             height: 80px;
             animation: rotate 1s linear infinite;
-            transform-origin: center center;
         }
-
         .loader .path {
-            stroke: #007bff;
+            stroke: var(--primary);
             stroke-linecap: round;
             stroke-dasharray: 89 150;
             stroke-dashoffset: 0;
             stroke-width: 1.5;
         }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
 
-        @media (prefers-color-scheme: dark) {
-            .loader .path {
-                stroke: #1a73e8;
-            }
+        /* --- 結果表示シート (ボトムシート/PCパネル) --- */
+
+        /* バックドロップ (スマホ用暗幕) */
+        .sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            background-color: var(--overlay-backdrop);
+            z-index: 99;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(2px); /* 少しぼかしを入れるとリッチになる */
+        }
+        .sheet-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
         }
 
-        @keyframes rotate {
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-msg {
-            margin-top: 20px;
-            font-weight: 500;
-            color: var(--text-sub);
-        }
-
-        /* --- 結果パネル（アニメーション対応） --- */
-        
-        /* 共通: 中身のレイアウト */
-        .result-panel-content {
-            padding: 30px 20px;
+        /* ボトムシート本体 */
+        .result-sheet {
+            background-color: var(--bg-panel);
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            height: 100%;
-            overflow-y: auto;
+            z-index: 100;
         }
 
-        /* スマホ向け: 下から出てくるボトムシート */
+        /* スマホ向け: ボトムシートスタイル */
         @media (max-width: 767px) {
-            .result-section {
+            .result-sheet {
                 position: fixed;
                 bottom: 0;
                 left: 0;
-                width: 100%;
-                z-index: 100;
-                border-radius: 24px 24px 0 0; /* 上だけ丸く */
-                box-shadow: 0 -5px 30px rgba(0,0,0,0.2);
-                transform: translateY(110%); /* 初期状態は画面外 */
-                transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                max-height: 80vh;
+                right: 0;
+                border-radius: 20px 20px 0 0;
+                box-shadow: var(--shadow-sheet);
+                transform: translateY(100%);
+                transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1); /* iOS風の慣性 */
+                max-height: 85vh;
+                padding-bottom: env(safe-area-inset-bottom, 20px);
+            }
+            
+            .result-sheet.active {
+                transform: translateY(0);
             }
 
-            .result-section.active {
-                transform: translateY(0); /* 出現 */
-            }
-
-            /* ボトムシート用の閉じるハンドル */
-            .result-section::before {
-                content: '';
-                display: block;
+            /* ドラッグハンドルバー */
+            .sheet-handle {
                 width: 40px;
                 height: 5px;
                 background-color: var(--border-color);
                 border-radius: 10px;
-                margin: 10px auto 0;
+                margin: 12px auto;
+                flex-shrink: 0;
             }
         }
 
-        /* PC向け: 右側に固定され、中身が下から湧き上がる */
+        /* PC向け: 右カラムスタイル */
         @media (min-width: 768px) {
-            .result-section {
-                position: relative;
-                transform: none;
-                opacity: 1;
-            }
-            
-            /* 結果が出たときのアニメーション */
-            .result-panel-content.animate-in > * {
-                animation: slideUpFade 0.5s ease-out forwards;
-                opacity: 0;
-                transform: translateY(20px);
-            }
+            .sheet-backdrop { display: none; } /* PCでは暗幕なし */
 
-            /* 順番に表示 */
-            .result-panel-content.animate-in > *:nth-child(1) { animation-delay: 0.1s; }
-            .result-panel-content.animate-in > *:nth-child(2) { animation-delay: 0.2s; }
-            .result-panel-content.animate-in > *:nth-child(3) { animation-delay: 0.3s; }
+            .result-sheet {
+                position: relative;
+                height: 100%;
+                border-radius: 16px;
+                border: 1px solid var(--border-color);
+                transform: none;
+                transition: none;
+            }
+            .sheet-handle { display: none; }
         }
 
-        @keyframes slideUpFade {
-            to { opacity: 1; transform: translateY(0); }
+        /* 結果コンテンツ */
+        .result-content-wrapper {
+            padding: 0 24px 24px 24px;
+            overflow-y: auto;
+            flex-grow: 1;
         }
 
         .empty-state {
-            text-align: center;
-            color: var(--text-sub);
-            margin-top: 50px;
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            opacity: 0.5;
+            justify-content: center;
+            text-align: center;
+            height: 100%;
+            color: var(--text-sub);
+            min-height: 200px;
         }
 
-        .result-content {
+        /* 結果が出たときのアニメーション（フェードイン） */
+        .scan-result-container {
             display: none;
             flex-direction: column;
-            gap: 15px;
-            width: 100%;
+            gap: 20px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
         }
         
-        .result-content.show { display: flex; }
-
-        .scanned-label {
-            font-size: 0.85rem; 
-            color: var(--text-sub); 
-            font-weight: 500;
-            margin-bottom: 5px;
-            display: block;
+        .scan-result-container.show {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .scanned-value-box {
             background-color: var(--input-bg);
             border: 1px solid var(--border-color);
-            padding: 15px;
+            padding: 16px;
             border-radius: 12px;
             font-family: monospace;
             word-break: break-all;
-            max-height: 200px;
-            overflow-y: auto;
-            color: var(--text-main);
             font-size: 1rem;
+            color: var(--text-main);
+            max-height: 150px;
+            overflow-y: auto;
         }
 
         .action-btn-group {
             display: flex;
-            gap: 10px;
             flex-direction: column;
+            gap: 12px;
             margin-top: 10px;
         }
 
         .btn {
             padding: 14px;
-            border-radius: 10px;
+            border-radius: 12px;
             border: none;
             font-weight: 600;
             cursor: pointer;
@@ -462,31 +425,16 @@
             transition: all 0.2s;
             width: 100%;
         }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn:hover:not(:disabled) { transform: translateY(-2px); shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn:active { transform: translateY(0); }
+        .btn:active { transform: scale(0.98); }
 
-        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .btn-secondary { background-color: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); }
-        
-        .close-sheet-btn {
-            display: none; /* PCでは非表示 */
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: transparent;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--text-sub);
-            cursor: pointer;
-        }
-        @media (max-width: 767px) {
-            .close-sheet-btn { display: block; }
-        }
 
-        /* HTML5-QRCodeの不要な要素を完全に隠す */
-        #reader__dashboard_section_csr button { display: none; }
-        #reader__dashboard_section_swaplink { display: none; }
+        .header-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -507,7 +455,7 @@
                     <i class="bi bi-camera-fill"></i> カメラ
                 </button>
                 <button class="tab-btn" id="tab-file" onclick="switchMode('file')">
-                    <i class="bi bi-image-fill"></i> 画像アップロード
+                    <i class="bi bi-image-fill"></i> 画像選択
                 </button>
             </div>
 
@@ -515,7 +463,7 @@
                 <!-- カメラ映像 -->
                 <div id="reader"></div>
                 
-                <!-- カメラ用フレーム (CSSで二重表示を防止済み) -->
+                <!-- カメラ用フレーム -->
                 <div class="scan-overlay" id="scan-overlay">
                     <div class="scan-corner top-left"></div>
                     <div class="scan-corner top-right"></div>
@@ -526,89 +474,91 @@
 
                 <!-- ファイルアップロードUI -->
                 <div class="file-upload-area" id="file-upload-area">
-                    <div class="upload-content">
-                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                        <h3 style="font-size: 1.1rem; margin-bottom: 5px;">画像をドラッグ&ドロップ</h3>
-                        <p style="color: var(--text-sub); font-size: 0.9rem;">または</p>
-                        <label for="qr-input-file" class="custom-file-upload">
-                            ファイルを選択
-                        </label>
-                        <input type="file" id="qr-input-file" accept="image/*">
-                        <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-sub);">
-                            ※ スクリーンショットも読み取れます
-                        </p>
-                    </div>
+                    <i class="bi bi-cloud-arrow-up" style="font-size: 3rem; color: var(--text-sub); margin-bottom: 10px;"></i>
+                    <p style="color: var(--text-sub);">画像をドラッグ&ドロップ</p>
+                    <label for="qr-input-file" class="custom-file-upload">
+                        ライブラリから選択
+                    </label>
+                    <input type="file" id="qr-input-file" accept="image/*">
                 </div>
 
-                <!-- 指定のローディングスピナー -->
+                <!-- ローディングスピナー -->
                 <div class="loader-overlay" id="loading-overlay">
                     <svg id="spinner" class="loader" viewBox="0 0 50 50">
                         <circle class="path" cx="25" cy="25" r="20" fill="none"></circle>
                     </svg>
-                    <div class="loading-msg">QRコードを解析中...</div>
+                    <div style="margin-top: 15px; color: var(--text-sub); font-weight: 500;">解析中...</div>
                 </div>
             </div>
         </section>
 
-        <!-- 右側（スマホでは下）：結果表示セクション -->
-        <section class="result-section panel" id="result-section">
-            <button class="close-sheet-btn" onclick="closeResultSheet()">
-                <i class="bi bi-x-lg"></i>
-            </button>
+        <!-- スマホ用バックドロップ (PCでは非表示) -->
+        <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeSheet()"></div>
 
-            <div class="header-bar" style="border-bottom: none; padding-bottom: 0;">
-                <div class="app-title" style="font-size: 1rem;">
-                    <i class="bi bi-card-text"></i> スキャン結果
-                </div>
-            </div>
-            
-            <div class="result-panel-content" id="result-panel-content">
-                <!-- 未スキャン時の表示 -->
-                <div id="empty-state" class="empty-state">
-                    <i class="bi bi-qr-code"></i>
-                    <p>カメラでスキャンするか<br>画像をアップロードしてください</p>
-                </div>
+        <!-- 結果表示シート (スマホ:ボトムシート / PC:右パネル) -->
+        <div class="result-wrapper-pc">
+            <section class="result-sheet" id="result-sheet">
+                <!-- スマホ用ハンドル -->
+                <div class="sheet-handle"></div>
 
-                <!-- 結果表示 -->
-                <div id="result-content" class="result-content">
-                    <div>
-                        <span class="scanned-label">読み取り内容</span>
-                        <div class="scanned-value-box" id="result-text"></div>
-                    </div>
-                    
-                    <div class="action-btn-group">
-                        <button class="btn btn-primary" id="open-link-btn" onclick="openLink()" disabled>
-                            <i class="bi bi-box-arrow-up-right"></i> URLを開く
-                        </button>
-                        <button class="btn btn-secondary" onclick="copyToClipboard()">
-                            <i class="bi bi-clipboard"></i> コピー
-                        </button>
-                        <button class="btn btn-secondary" onclick="resetScanner()">
-                            <i class="bi bi-arrow-clockwise"></i> 次をスキャン
-                        </button>
+                <div class="result-content-wrapper">
+                    <!-- 初期状態 (PCのみ表示されることがある) -->
+                    <div id="empty-state" class="empty-state">
+                        <i class="bi bi-qr-code" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                        <p>スキャン結果がここに表示されます</p>
                     </div>
 
-                    <!-- エラー時のヒント -->
-                    <div id="error-hint" style="display:none; margin-top:10px; padding:12px; background:#fff3cd; color:#856404; border-radius:8px; font-size:0.85rem; line-height: 1.4;">
-                        <i class="bi bi-exclamation-triangle-fill" style="margin-right: 5px;"></i>
-                        <strong>読み取れませんか？</strong><br>
-                        QRコードが小さすぎる可能性があります。画像を「QRコード部分だけ」に切り抜いてから再度アップロードしてください。
+                    <!-- スキャン結果 -->
+                    <div id="scan-result" class="scan-result-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                            <h3 class="header-title">読み取り完了</h3>
+                            <!-- スマホ用の閉じるボタン -->
+                            <button onclick="closeSheet()" style="background:none; border:none; padding:5px; cursor:pointer; color:var(--text-sub);" class="md:hidden">
+                                <i class="bi bi-x-lg" style="font-size: 1.2rem;"></i>
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <span style="font-size: 0.85rem; color: var(--text-sub); font-weight: 500; display:block; margin-bottom: 5px;">内容</span>
+                            <div class="scanned-value-box" id="result-text"></div>
+                        </div>
+                        
+                        <div class="action-btn-group">
+                            <button class="btn btn-primary" id="open-link-btn" onclick="openLink()" disabled>
+                                <i class="bi bi-box-arrow-up-right"></i> URLを開く
+                            </button>
+                            <button class="btn btn-secondary" onclick="copyToClipboard()">
+                                <i class="bi bi-clipboard"></i> コピー
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetScanner()">
+                                <i class="bi bi-arrow-clockwise"></i> 次をスキャン
+                            </button>
+                        </div>
+
+                        <!-- エラーヒント -->
+                        <div id="error-hint" style="display:none; padding:12px; background:rgba(255, 193, 7, 0.15); color:#856404; border-radius:8px; font-size:0.85rem; line-height: 1.4;">
+                            <i class="bi bi-exclamation-triangle-fill" style="margin-right: 5px;"></i>
+                            <strong>読み取れませんか？</strong><br>
+                            QRコード部分だけを画像編集で切り抜いてから再度お試しください。
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </div>
 
     </div>
 
     <script>
-        // --- 変数定義 ---
         const html5QrCode = new Html5Qrcode("reader");
         const fileInput = document.getElementById('qr-input-file');
-        const resultSection = document.getElementById('result-section');
-        const resultPanelContent = document.getElementById('result-panel-content');
+        
+        // UI Elements
+        const sheetBackdrop = document.getElementById('sheet-backdrop');
+        const resultSheet = document.getElementById('result-sheet');
         const emptyState = document.getElementById('empty-state');
-        const resultContent = document.getElementById('result-content');
+        const scanResult = document.getElementById('scan-result');
         const resultText = document.getElementById('result-text');
+        
         const scanOverlay = document.getElementById('scan-overlay');
         const loadingOverlay = document.getElementById('loading-overlay');
         const openLinkBtn = document.getElementById('open-link-btn');
@@ -621,7 +571,6 @@
         function switchMode(mode) {
             currentMode = mode;
             
-            // タブの見た目更新
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tab-${mode}`).classList.add('active');
 
@@ -641,17 +590,12 @@
             }
         }
 
-        // --- カメラ機能 ---
+        // --- カメラ処理 ---
         function startCamera() {
             if (isScanning) return;
             errorHint.style.display = 'none';
 
-            // 設定: QRコードの検出範囲などを最適化
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0
-            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
             
             html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
             .then(() => {
@@ -670,14 +614,13 @@
                     isScanning = false;
                     scanOverlay.classList.remove('active');
                     const video = document.querySelector('#reader video');
-                    if(video) video.remove(); // 完全にクリーンアップ
+                    if(video) video.remove();
                 }).catch(err => console.error(err));
             }
             return Promise.resolve();
         }
 
-        // --- 画像ファイル処理 ---
-        // ドラッグ&ドロップ対応
+        // --- ファイル処理 ---
         const dropArea = document.getElementById('file-upload-area');
         dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.backgroundColor = 'var(--bg-body)'; });
         dropArea.addEventListener('dragleave', (e) => { e.preventDefault(); dropArea.style.backgroundColor = 'var(--input-bg)'; });
@@ -696,10 +639,9 @@
         });
 
         function handleFile(file) {
-            loadingOverlay.classList.add('active'); // スピナー表示
+            loadingOverlay.classList.add('active');
             errorHint.style.display = 'none';
 
-            // UI描画更新のために少し待機
             setTimeout(() => {
                 html5QrCode.scanFile(file, true)
                     .then(decodedText => {
@@ -708,36 +650,25 @@
                     })
                     .catch(err => {
                         loadingOverlay.classList.remove('active');
-                        console.error("File Scan Error", err);
-                        
-                        // 画像が読み取れなかった場合の処理
                         alert("QRコードを検出できませんでした。");
                         errorHint.style.display = 'block';
-                        
-                        // 入力をクリアして再選択可能にする
                         fileInput.value = '';
+                        // エラー時もシートを開いてヒントを見せる
+                        openSheet(false);
                     });
             }, 100); 
         }
 
-        // --- 共通成功コールバック ---
+        // --- スキャン成功時 ---
         function onScanSuccess(decodedText, decodedResult) {
             if (currentMode === 'camera') {
                 stopCamera();
             }
 
-            // 表示のリセット
-            emptyState.style.display = 'none';
-            resultContent.classList.add('show');
+            // テキストセット
             resultText.innerText = decodedText;
-
-            // アニメーション発火 (PCでは中身のスライド、スマホではシートの出現)
-            resultSection.classList.add('active'); // スマホ用ボトムシート表示
-            resultPanelContent.classList.remove('animate-in'); // アニメーションリセット
-            void resultPanelContent.offsetWidth; // リフロー強制
-            resultPanelContent.classList.add('animate-in'); // PC用スライドアニメーション開始
-
-            // URL判定
+            
+            // ボタン制御
             if (isValidURL(decodedText)) {
                 openLinkBtn.disabled = false;
                 openLinkBtn.innerHTML = '<i class="bi bi-box-arrow-up-right"></i> URLを開く';
@@ -745,10 +676,49 @@
                 openLinkBtn.disabled = true;
                 openLinkBtn.innerHTML = '<i class="bi bi-text-left"></i> URLではありません';
             }
+
+            openSheet(true);
         }
 
-        function onScanFailure(error) {
-            // コンソールログを汚さないため何もしない
+        function onScanFailure(error) {}
+
+        // --- シート制御 (スマホ:ボトムシート / PC:表示切替) ---
+        function openSheet(hasResult) {
+            // PC向けの表示切替
+            emptyState.style.display = hasResult ? 'none' : 'flex';
+            
+            if (hasResult) {
+                scanResult.classList.add('show');
+            } else {
+                scanResult.classList.remove('show');
+            }
+
+            // スマホ向けのボトムシートアニメーション
+            // 画面幅が狭いときのみクラスを付与
+            if (window.innerWidth < 768 || hasResult) {
+                sheetBackdrop.classList.add('active');
+                resultSheet.classList.add('active');
+            }
+        }
+
+        function closeSheet() {
+            sheetBackdrop.classList.remove('active');
+            resultSheet.classList.remove('active');
+            // 完全に閉じた後に中身をクリアする等の処理があればここにsetTimeoutで書く
+        }
+
+        function resetScanner() {
+            closeSheet();
+            fileInput.value = '';
+            
+            // 少し待ってからリセット（アニメーション終了後）
+            setTimeout(() => {
+                scanResult.classList.remove('show');
+                emptyState.style.display = 'flex';
+                if (currentMode === 'camera') {
+                    startCamera();
+                }
+            }, 300);
         }
 
         // --- ユーティリティ ---
@@ -756,7 +726,7 @@
             const text = resultText.innerText;
             if(!text) return;
             navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.btn-secondary'); // 最初のセカンダリボタンを取得
+                const btn = document.querySelectorAll('.btn-secondary')[0];
                 const originalHtml = btn.innerHTML;
                 btn.innerHTML = '<i class="bi bi-check-lg"></i> コピーしました';
                 setTimeout(() => {
@@ -773,39 +743,10 @@
         }
 
         function isValidURL(string) {
-            try {
-                new URL(string);
-                return true;
-            } catch (_) {
-                return false;
-            }
+            try { new URL(string); return true; } catch (_) { return false; }
         }
 
-        function closeResultSheet() {
-            resultSection.classList.remove('active');
-            // スマホの場合、閉じた後に再スキャンしやすいようにリセット
-            if(currentMode === 'camera' && !isScanning) {
-                // 自動で再開するかはUXによるが、今回はリセットボタンでの明示的な再開に任せる
-            }
-        }
-
-        function resetScanner() {
-            closeResultSheet();
-            fileInput.value = '';
-            
-            // 結果表示を隠して初期状態に戻す
-            resultContent.classList.remove('show');
-            emptyState.style.display = 'flex';
-            
-            if (currentMode === 'camera') {
-                startCamera();
-            }
-        }
-
-        // 初期化
-        window.onload = () => {
-            switchMode('camera');
-        };
+        window.onload = () => { switchMode('camera'); };
     </script>
 </body>
 </html>
